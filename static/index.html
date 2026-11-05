@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Replicate GPT-Image-2.6 Studio</title>
+<meta name="description" content="Replicate GPT-Image-2.6 Studio — 本地复刻 GPT-Image-2.6 的 GIF 生成与 SVG 矢量导出">
+<link rel="stylesheet" href="style.css">
+<script>
+/* 主题防闪烁：渲染前应用已保存/系统主题 */
+(function () {
+  var t = localStorage.getItem("img26_theme");
+  if (t === "dark" || (t !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+    document.documentElement.setAttribute("data-theme", "dark");
+  } else {
+    document.documentElement.setAttribute("data-theme", "light");
+  }
+})();
+</script>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+    </span>
+    <span class="brand-name">GPT-Image-2.6</span>
+  </div>
+  <div class="brand-sub">Replicate Studio</div>
+
+  <nav class="sidenav">
+    <button id="tab-gif" class="nav-item active" role="tab" aria-selected="true">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20"/><path d="M6 12h4"/><path d="M6 16h4"/><path d="m14 12 2 2 4-4"/></svg>
+      GIF 工作台
+    </button>
+    <button id="tab-svg" class="nav-item" role="tab" aria-selected="false">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
+      SVG 工作台
+    </button>
+  </nav>
+
+  <div class="sidebar-foot">
+    <span id="status-pill" class="pill pill-muted" title="服务状态">
+      <span class="dot"></span><span id="status-text">连接中…</span>
+    </span>
+    <div class="foot-group">
+      <button id="theme-toggle" class="icon-btn" title="切换深浅色" aria-label="切换深浅色">
+        <svg id="theme-icon-moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        <svg id="theme-icon-sun" class="hidden" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+      </button>
+      <button id="btn-settings" class="icon-btn" title="设置（API 接入 / 强制终止冷却）" aria-label="设置">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<div class="main-wrap">
+<main>
+  <!-- ============ GIF 工作台 ============ -->
+  <section id="panel-gif" class="workspace active">
+    <div class="stagebar" id="gif-stagebar">
+      <div class="stage" data-stage="plan"><span class="stage-num">1</span>剧本规划</div>
+      <div class="stage-sep"></div>
+      <div class="stage" data-stage="first_frame"><span class="stage-num">2</span>底图生成</div>
+      <div class="stage-sep"></div>
+      <div class="stage" data-stage="frames"><span class="stage-num">3</span>逐帧生成</div>
+      <div class="stage-sep"></div>
+      <div class="stage" data-stage="closure"><span class="stage-num">4</span>闭合检查</div>
+      <div class="stage-sep"></div>
+      <div class="stage" data-stage="encode"><span class="stage-num">5</span>合成 GIF</div>
+    </div>
+
+    <div class="work-grid" id="gif-grid">
+      <div class="canvas-col">
+        <div class="canvas-card">
+          <div id="gif-canvas" class="canvas-area">
+            <div class="canvas-placeholder">
+              <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 8h20"/><path d="M6 12h4"/><path d="M6 16h4"/><path d="m14 12 2 2 4-4"/></svg>
+              <p>描述你的循环动画，点击「生成 GIF」</p>
+              <p class="canvas-sub">生成过程将实时可视化：底图 → 逐帧 → 合成</p>
+            </div>
+            <img id="gif-canvas-img" class="hidden" alt="当前画面">
+            <div id="gif-canvas-state" class="canvas-state hidden"></div>
+          </div>
+          <div id="gif-result-bar" class="result-bar hidden">
+            <span id="gif-loop-badge" class="pill"></span>
+            <span id="gif-result-meta" class="result-meta-text"></span>
+            <span class="flex-spacer"></span>
+            <button id="gif-download" class="btn-primary btn-small">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+              下载 GIF
+            </button>
+          </div>
+
+          <details id="script-card" class="hidden">
+            <summary class="card-title">导演剧本（AI 规划流式输出）</summary>
+            <pre id="script-raw" class="script-raw hidden"></pre>
+            <div class="script-body">
+              <p class="script-line"><b>首帧：</b><span id="script-first"></span></p>
+              <div id="script-changes" class="script-changes"></div>
+            </div>
+          </details>
+
+          <details id="gif-log-card" class="log-card hidden">
+            <summary class="card-title">过程日志</summary>
+            <div id="gif-log" class="event-log"></div>
+          </details>
+        </div>
+      </div>
+
+            <div class="grid-splitter" title="拖拽调整宽度"></div>
+
+      <aside class="params-col">
+        <div class="card">
+          <h2 class="card-title">动画描述</h2>
+          <textarea id="gif-prompt" rows="5" placeholder="例如：一个极简火柴人拿着剑，游戏风格，把剑来回挥砍"></textarea>
+
+          <h3 class="field-label">参考图（可选，作为首帧起点）</h3>
+          <div id="gif-drop" class="dropzone" tabindex="0">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>
+            <span>拖拽 / 点击 / 粘贴图片</span>
+            <input id="gif-file" type="file" accept="image/png,image/jpeg,image/webp,image/bmp" hidden>
+          </div>
+          <div id="gif-ref-preview" class="ref-preview hidden">
+            <img id="gif-ref-preview-img" alt="参考图预览">
+            <button id="gif-ref-clear" class="icon-btn" title="移除参考图" aria-label="移除参考图">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+          </div>
+
+          <div class="params">
+            <label class="param" style="flex-basis:100%">
+              <span>帧数模式</span>
+              <div class="seg" style="width:100%;display:flex">
+                <button id="fm-fixed" class="seg-btn active" style="flex:1">固定帧数</button>
+                <button id="fm-auto" class="seg-btn" style="flex:1">AI 自主决策</button>
+              </div>
+            </label>
+            <label class="param">
+              <span><b id="gif-frames-label">帧数</b> <b id="gif-frames-val">6</b></span>
+              <input id="gif-frames" type="range" min="2" max="12" value="6">
+            </label>
+            <label class="param">
+              <span>尺寸</span>
+              <select id="gif-size">
+                <option value="1024x1024" selected>1024×1024（1K·方）</option>
+                <option value="2048x2048">2048×2048（2K·方）</option>
+                <option value="512x512">512×512（端点可能升到 1K）</option>
+              </select>
+            </label>
+            <label class="param">
+              <span>帧间隔(ms)</span>
+              <input id="gif-duration" type="number" min="20" max="5000" step="10" value="200">
+            </label>
+            <label class="param param-inline">
+              <input id="gif-loop" type="checkbox" checked>
+              <span>无限循环</span>
+            </label>
+          </div>
+
+          <div class="actions">
+            <button id="gif-submit" class="btn-primary btn-block">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              生成 GIF
+            </button>
+            <button id="gif-cancel" class="btn-ghost btn-block hidden">取消任务</button>
+          </div>
+          <p class="hint">导演模式：AI 先一次性写好每帧动作指令（流式可见），画图 AI 再以上一帧为参考依次绘制；AI 自主决策模式由 AI 自行决定帧数（上限为滑块值），末帧自动附加循环闭合指令。</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============ SVG 工作台 ============ -->
+  <section id="panel-svg" class="workspace">
+    <div class="seg-row">
+      <div class="seg">
+        <button id="svg-mode-generate" class="seg-btn active">AI 生成 → SVG</button>
+        <button id="svg-mode-convert" class="seg-btn">位图转换</button>
+      </div>
+    </div>
+
+    <div class="work-grid" id="svg-grid">
+      <div class="canvas-col">
+        <div class="canvas-card">
+          <div id="svg-canvas" class="canvas-area">
+            <div class="canvas-placeholder">
+              <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
+              <p>左侧输入描述或上传位图开始</p>
+            </div>
+            <div id="svg-compare" class="compare-slider hidden">
+              <img id="svg-src-img" class="cs-img" alt="位图原图">
+              <div id="svg-top-layer" class="cs-top"><div id="svg-out-box" class="svg-out-box"></div></div>
+              <div id="svg-handle" class="cs-handle" role="slider" aria-label="对比滑杆" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" tabindex="0">
+                <div class="cs-grip">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18-6-6 6-6"/><path d="m15 6 6 6-6 6"/></svg>
+                </div>
+              </div>
+              <span class="pane-label pane-left" id="svg-src-label">位图</span>
+              <span class="pane-label pane-right">SVG 矢量</span>
+            </div>
+            <div id="svg-state" class="canvas-state hidden"></div>
+          </div>
+          <div id="svg-result-bar" class="result-bar hidden">
+            <span id="svg-meta" class="result-meta-text"></span>
+            <span class="flex-spacer"></span>
+            <button id="svg-copy" class="btn-ghost btn-small">复制 SVG</button>
+            <a id="svg-png-download" class="btn-ghost btn-small hidden" download="generated.png">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+              下载位图
+            </a>
+            <a id="svg-download" class="btn-primary btn-small" download="output.svg">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>
+              下载 SVG
+            </a>
+          </div>
+        </div>
+      </div>
+
+            <div class="grid-splitter" title="拖拽调整宽度"></div>
+
+      <aside class="params-col">
+        <div class="card">
+          <div id="svg-generate-inputs">
+            <h2 class="card-title">生成描述</h2>
+            <textarea id="svg-prompt" rows="4" placeholder="例如：一个极简火柴人拿着剑，游戏风格"></textarea>
+            <h3 class="field-label">参考图（可选）</h3>
+            <div id="svg-gen-drop" class="dropzone" tabindex="0">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>
+              <span>拖拽 / 点击 / 粘贴参考图</span>
+              <input id="svg-gen-file" type="file" accept="image/png,image/jpeg,image/webp,image/bmp" hidden>
+            </div>
+            <div id="svg-gen-ref-preview" class="ref-preview hidden">
+              <img id="svg-gen-ref-preview-img" alt="参考图预览">
+              <button id="svg-gen-ref-clear" class="icon-btn" title="移除参考图" aria-label="移除参考图">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+            <label class="param" style="margin-top:14px"><span>生成尺寸</span>
+              <select id="svg-gen-size">
+                <option value="1024x1024" selected>1024×1024（1K·方）</option>
+                <option value="2048x2048">2048×2048（2K·方）</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="svg-convert-inputs" class="hidden">
+            <h2 class="card-title">输入位图</h2>
+            <div id="svg-drop" class="dropzone" tabindex="0">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>
+              <span>拖拽 / 点击 / 粘贴图片</span>
+              <input id="svg-file" type="file" accept="image/png,image/jpeg,image/webp,image/bmp" hidden>
+            </div>
+            <div id="svg-ref-preview" class="ref-preview hidden">
+              <img id="svg-ref-preview-img" alt="输入图片预览">
+              <button id="svg-ref-clear" class="icon-btn" title="移除图片" aria-label="移除图片">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+            <input id="svg-url" class="text-input" type="url" placeholder="或输入图片 URL（http/https）" style="margin-top:10px">
+          </div>
+
+          <details class="params-advanced">
+            <summary>矢量化参数（vtracer）</summary>
+            <div class="params grid-params">
+              <label class="param"><span>色彩模式</span>
+                <select id="p-colormode"><option value="color" selected>color</option><option value="binary">binary（黑白）</option></select>
+              </label>
+              <label class="param"><span>层级策略</span>
+                <select id="p-hierarchical"><option value="stacked" selected>stacked</option><option value="cutout">cutout</option></select>
+              </label>
+              <label class="param"><span>曲线模式</span>
+                <select id="p-mode"><option value="spline" selected>spline</option><option value="polygon">polygon</option></select>
+              </label>
+              <label class="param"><span>斑点过滤 <b id="p-speckle-val">4</b></span>
+                <input id="p-filter_speckle" type="range" min="1" max="64" value="4">
+              </label>
+              <label class="param"><span>颜色精度 <b id="p-precision-val">6</b></span>
+                <input id="p-color_precision" type="range" min="1" max="8" value="6">
+              </label>
+              <label class="param"><span>图层差 <b id="p-layer-val">16</b></span>
+                <input id="p-layer_difference" type="range" min="1" max="64" value="16">
+              </label>
+            </div>
+            <p class="hint">斑点过滤越大越平滑；照片建议 ≥ 8。</p>
+          </details>
+
+          <div class="actions">
+            <button id="svg-submit" class="btn-primary btn-block">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+              <span id="svg-submit-label">生成并矢量化</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <span>GIF是网络表达的母语，我们让每位不用OpenArt的创作者也能通过单一提示流畅地表达。——白小谦</span>
+  <span class="footer-dim" id="footer-version"></span>
+</footer>
+</div>
+
+<!-- 设置弹层：Token + 网页端 API 配置 -->
+<div id="modal-settings" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-box modal-wide">
+    <h2>设置</h2>
+    <label class="field-label">访问 Token（服务端启用鉴权时填写）</label>
+    <input id="settings-token" class="text-input" type="password" placeholder="留空表示无鉴权">
+
+    <div class="settings-head">
+      <h3 class="field-label">API 接入配置（保存后立即生效）</h3>
+      <button id="prov-add" class="btn-ghost btn-small">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+        添加端点
+      </button>
+    </div>
+    <label class="param" style="margin:0 0 10px"><span>一键预设（选平台后只需填 Key）</span>
+      <select id="preset-select"><option value="">自定义 / 已有配置</option></select>
+    </label>
+    <div id="preset-notes" class="hint hidden" style="margin:0 0 10px"></div>
+    <div id="prov-list" class="prov-list"></div>
+    <p class="hint">OpenAI 兼容端点，Base URL 填到 /v1 即可；多 Key 一行一个，自动轮询。Key 显示为掩码时表示沿用已存值，改动即为新 Key。参考图编辑模式：OpenAI 官方选 edits_multipart；Agnes 等走 generations 接口的平台选 generations_extra_body。保存会重写 config.yaml（文件注释将丢失）。</p>
+
+    <div class="actions">
+      <button id="settings-save" class="btn-primary">保存配置</button>
+      <button id="keys-reset" class="btn-ghost" title="立即清零全部 Key 的冷却与故障标记">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        强制终止冷却
+      </button>
+      <button id="settings-close" class="btn-ghost">关闭</button>
+    </div>
+    <div id="settings-providers" class="provider-info"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden" role="status"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

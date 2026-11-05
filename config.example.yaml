@@ -1,0 +1,62 @@
+# =====================================================================
+# GPT-Image-2.6 复刻（GIF + SVG）配置模板
+# 复制为 config.yaml 后填写你自己的端点与 Key（config.yaml 不会被提交）
+# =====================================================================
+
+server:
+  host: 127.0.0.1          # 仅本机访问；开放局域网请改 0.0.0.0 并务必设置 api_token
+  port: 8266
+  api_token: ""            # 留空=不鉴权；非空则所有 /api/v1/* 需要 Bearer Token
+  cors_origins:            # 允许跨源调用本 API 的来源
+    - "*"
+
+providers:                  # OpenAI 兼容端点，至少 1 个；可配多个
+  - name: my-provider
+    base_url: https://api.example.com/v1   # 兼容端点根地址（含 /v1）
+    api_keys:                              # 多 Key 自动轮询 + 429 冷却 + 故障标记
+      - "sk-xxxxxxxxxxxxxxxxxxxx-1"
+      - "sk-xxxxxxxxxxxxxxxxxxxx-2"
+    image_model: "gpt-image-1.5"           # 生图模型：需支持 /images/generations 与图生图
+    planner_model: "gpt-4o"                # 视觉规划模型：需支持读图（image_url 多模态）
+    image_provider: true                   # 是否承担生图角色
+    planner_provider: true                 # 是否承担规划角色
+    # 参考图编辑（图生图）接口风格，二选一：
+    #   edits_multipart        — OpenAI 官方式：POST /images/edits（multipart 上传参考图）
+    #   generations_extra_body — Agnes 式：POST /images/generations + extra_body.image（Data URI）
+    edit_style: edits_multipart
+  # 生图与规划可分别使用不同 provider，例如：
+  # - name: image-only
+  #   base_url: https://api.another.com/v1
+  #   api_keys: ["sk-yyy"]
+  #   image_model: "some-image-model"
+  #   image_provider: true
+  #   planner_provider: false
+
+gif:
+  default_frames: 6         # 默认帧数（官方 GPT-Image-2.6 示例为 6 帧）
+  max_frames: 12            # 帧数上限
+  default_size: "1024x1024" # 512x512 | 768x768 | 1024x1024
+  frame_interval_ms: 200    # 帧间隔（毫秒）
+  loop_forever: true        # 无限循环
+  background: "#FFFFFF"     # 透明帧铺垫色
+  max_concurrent_tasks: 3   # 同时运行的 GIF 任务上限
+  task_ttl_seconds: 3600    # 完成任务保留时长（过期自动清理，重启即失）
+
+svg:
+  max_upload_bytes: 20971520        # 上传上限 20MB
+  max_pixels: 10000000              # 像素上限 10MP
+  downscale_long_side: 4096         # 长边超此值自动等比缩小
+  max_svg_bytes: 8388608            # SVG 体积警告阈值 8MB
+  allow_private_address: false      # URL 拉图是否允许私网地址（SSRF 防护，保持 false）
+  request_timeout_seconds: 15
+  defaults:                          # vtracer 默认参数（前端可调）
+    colormode: color                 # color | binary
+    hierarchical: stacked            # stacked | cutout
+    mode: spline                     # spline | polygon
+    filter_speckle: 4                # 斑点过滤（越大越平滑、细节越少）
+    color_precision: 6               # 颜色精度 1-8
+    layer_difference: 16             # 图层差（越大层数越少）
+    corner_threshold: 60             # 拐角阈值（度）
+    length_threshold: 3.5            # 路径长度阈值
+    splice_threshold: 45             # 拼接阈值
+    path_precision: 3                # 路径坐标小数位
